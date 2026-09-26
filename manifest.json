@@ -1,0 +1,31 @@
+{
+    "manifest_version": 3,
+    "name": "Sticky",
+    "version": "1.0",
+    "description": "A persistent sticky note for the browser.",
+
+    "permissions": [
+        "storage",
+        "tabs"
+    ],
+
+    "host_permissions": [
+        "<all_urls>"
+    ],
+
+    "action": {
+        "default_title": "Toggle Sticky"
+    },
+
+    "background": {
+        "service_worker": "background.js"
+    },
+
+    "content_scripts": [
+        {
+            "matches": ["<all_urls>"],
+            "js": ["content.js"],
+            "css": ["style.css"]
+        }
+    ]
+}
