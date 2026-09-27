@@ -808,15 +808,55 @@ document.addEventListener(
             return;
         }
 
+        const width =
+            box.offsetWidth;
+
+        const height =
+            box.offsetHeight;
+
+        let newX =
+            event.clientX - offsetX;
+
+        let newY =
+            event.clientY - offsetY;
+
+
+        /*
+            Keep the Sticky inside
+            the browser viewport.
+        */
+
+        const maxX =
+            window.innerWidth - width;
+
+        const maxY =
+            window.innerHeight - height;
+
+
+        newX =
+            Math.max(
+                0,
+                Math.min(
+                    newX,
+                    maxX
+                )
+            );
+
+        newY =
+            Math.max(
+                0,
+                Math.min(
+                    newY,
+                    maxY
+                )
+            );
+
 
         box.style.left =
-            (event.clientX - offsetX)
-            + "px";
-
+            newX + "px";
 
         box.style.top =
-            (event.clientY - offsetY)
-            + "px";
+            newY + "px";
 
     }
 );
