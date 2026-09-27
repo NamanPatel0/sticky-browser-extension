@@ -1682,3 +1682,49 @@
     right: 8px !important;
     top: 4px !important;
 }
+
+.session-delete {
+    position: absolute;
+    top: 50%;
+    right: 10px;
+
+    width: 26px;
+    height: 26px;
+
+    transform: translateY(-50%);
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    font-size: 18px;
+    line-height: 1;
+
+    color: rgba(255, 255, 255, 0.45);
+
+    cursor: pointer;
+
+    border-radius: 6px;
+
+    transition:
+        background 0.12s ease,
+        color 0.12s ease;
+}
+
+.session-delete:hover {
+    color: rgba(255, 255, 255, 0.9);
+
+    background:
+        rgba(255, 255, 255, 0.10);
+}
+
+#sticky-box[data-theme="paper"] .session-delete {
+    color: rgba(40, 37, 33, 0.45);
+}
+
+#sticky-box[data-theme="paper"] .session-delete:hover {
+    color: rgba(40, 37, 33, 0.9);
+
+    background:
+        rgba(40, 37, 33, 0.10);
+}

@@ -2140,6 +2140,53 @@ function createSessionCard(
     );
 
 
+    /*
+        Previous sessions get a delete button.
+        The current session does not.
+    */
+
+    if (!isCurrent) {
+
+        const deleteButton =
+            document.createElement(
+                "span"
+            );
+
+
+        deleteButton.className =
+            "session-delete";
+
+
+        deleteButton.textContent =
+            "×";
+
+
+        deleteButton.title =
+            "Delete session";
+
+
+deleteButton.addEventListener(
+    "click",
+    function(event) {
+
+        event.preventDefault();
+        event.stopPropagation();
+
+        deleteSession(
+            session.id
+        );
+
+    }
+);
+
+
+        card.appendChild(
+            deleteButton
+        );
+
+    }
+
+
     if (isCurrent) {
 
         const currentLabel =
@@ -2161,11 +2208,6 @@ function createSessionCard(
         );
 
 
-        /*
-            The current session is displayed
-            but clicking it does nothing.
-        */
-
         card.addEventListener(
             "pointerdown",
             function(event) {
@@ -2177,31 +2219,67 @@ function createSessionCard(
             true
         );
 
-    } else {
+} else {
 
-        card.addEventListener(
-            "pointerdown",
-            function(event) {
+    card.addEventListener(
+        "click",
+        function(event) {
 
-                event.preventDefault();
-                event.stopPropagation();
+            if (
+                event.target.closest(
+                    ".session-delete"
+                )
+            ) {
+                return;
+            }
 
+            selectSession(
+                session.id
+            );
 
-                selectSession(
-                    session.id
-                );
+        }
+    );
 
-            },
-            true
-        );
-
-    }
+}
 
 
     return card;
 
 }
 
+function deleteSession(id) {
+
+    const confirmed =
+        confirm(
+            "Delete this session?"
+        );
+
+
+    if (!confirmed) {
+        return;
+    }
+
+
+    sessions =
+        sessions.filter(
+            function(session) {
+
+                return session.id !== id;
+
+            }
+        );
+
+
+    chrome.storage.local.set(
+        {
+            sessions:
+                sessions
+        }
+    );
+
+    renderSessions();
+
+}
 
 /* ======================================================
    SESSION PREVIEW
