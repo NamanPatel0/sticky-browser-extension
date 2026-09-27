@@ -34,10 +34,11 @@ box.innerHTML = `
             spellcheck="false"
         >
 
-        <textarea
-            id="sticky-content"
-            placeholder="Take a note..."
-        ></textarea>
+        <div
+    id="sticky-content"
+    contenteditable="true"
+    data-placeholder="Paste something..."
+></div>
 
     </div>
 
@@ -533,8 +534,8 @@ function loadSession(session) {
     titleInput.value =
         session.name || "";
 
-    content.value =
-        session.text || "";
+content.innerHTML =
+    session.text || "";
 
 }
 
@@ -917,7 +918,7 @@ content.addEventListener(
 
 
         currentSession.text =
-            content.value;
+            content.innerHTML;
 
 
         scheduleSave();
@@ -925,6 +926,145 @@ content.addEventListener(
     }
 );
 
+/* ======================================================
+   IMAGE PASTE
+====================================================== */
+
+content.addEventListener(
+    "paste",
+    function(event) {
+
+        const clipboard =
+            event.clipboardData;
+
+        if (!clipboard) {
+            return;
+        }
+
+        const items =
+            Array.from(
+                clipboard.items || []
+            );
+
+        const imageItem =
+            items.find(
+                function(item) {
+
+                    return (
+                        item.kind === "file" &&
+                        item.type.startsWith("image/")
+                    );
+
+                }
+            );
+
+        /*
+            If there is no image, let the browser
+            handle normal text pasting.
+        */
+
+        if (!imageItem) {
+            return;
+        }
+
+        event.preventDefault();
+
+        const file =
+            imageItem.getAsFile();
+
+        if (!file) {
+            return;
+        }
+
+        const reader =
+            new FileReader();
+
+        reader.onload = function(loadEvent) {
+
+            const image =
+                document.createElement("img");
+
+            image.src =
+                loadEvent.target.result;
+
+            image.alt =
+                "Pasted image";
+
+
+            const selection =
+                window.getSelection();
+
+
+            if (
+                !selection ||
+                selection.rangeCount === 0
+            ) {
+
+                content.appendChild(
+                    image
+                );
+
+            } else {
+
+                const range =
+                    selection.getRangeAt(0);
+
+
+                if (
+                    !content.contains(
+                        range.commonAncestorContainer
+                    )
+                ) {
+
+                    content.appendChild(
+                        image
+                    );
+
+                } else {
+
+                    range.deleteContents();
+
+                    range.insertNode(
+                        image
+                    );
+
+
+                    range.setStartAfter(
+                        image
+                    );
+
+                    range.collapse(
+                        true
+                    );
+
+
+                    selection.removeAllRanges();
+
+                    selection.addRange(
+                        range
+                    );
+
+                }
+
+            }
+
+
+            if (currentSession) {
+
+                currentSession.text =
+                    content.innerHTML;
+
+                scheduleSave();
+
+            }
+
+        };
+
+
+        reader.readAsDataURL(file);
+
+    }
+);
 
 /* ======================================================
    SAVE SESSION
@@ -944,7 +1084,7 @@ function updateSessionFromUI() {
             titleInput.value,
 
         text:
-            content.value
+            content.innerHTML
     };
 
 }
@@ -1489,8 +1629,8 @@ function createNewSession() {
                 "";
 
 
-            content.value =
-                "";
+            content.innerHTML =
+    "";
 
 
             /*
@@ -1842,9 +1982,9 @@ function closeHome() {
                             "";
 
 
-                        content.value =
-                            currentSession.text ||
-                            "";
+                        content.innerHTML =
+    currentSession.text ||
+    "";
 
                     }
 
@@ -2218,9 +2358,9 @@ function selectSession(id) {
                 "";
 
 
-            content.value =
-                selectedCopy.text ||
-                "";
+            content.innerHTML =
+    selectedCopy.text ||
+    "";
 
 
             applyGeometry();
