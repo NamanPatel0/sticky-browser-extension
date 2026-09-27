@@ -2263,57 +2263,66 @@ if (!isCurrent) {
 }
 
 
-    if (isCurrent) {
+if (isCurrent) {
 
-        const currentLabel =
-            document.createElement(
-                "div"
+    const currentLabel =
+        document.createElement(
+            "div"
+        );
+
+    currentLabel.className =
+        "session-current-label";
+
+    currentLabel.textContent =
+        "CURRENT";
+
+    card.appendChild(
+        currentLabel
+    );
+
+    card.addEventListener(
+        "pointerdown",
+        function(event) {
+
+            event.preventDefault();
+            event.stopPropagation();
+
+            titleInput.value =
+                currentSession.name || "";
+
+            content.innerHTML =
+                currentSession.text || "";
+
+            homeView.classList.remove(
+                "show"
             );
 
-        currentLabel.className =
-            "session-current-label";
+            noteView.classList.remove(
+                "hide"
+            );
 
-        currentLabel.textContent =
-            "CURRENT";
+        },
+        true
+    );
 
-        card.appendChild(
-            currentLabel
-        );
+} else {
 
+    card.addEventListener(
+        "pointerdown",
+        function(event) {
 
-        card.addEventListener(
-            "pointerdown",
-            function(event) {
+            event.preventDefault();
+            event.stopPropagation();
 
-                event.preventDefault();
-                event.stopPropagation();
+            selectSession(
+                session.id
+            );
 
-            },
-            true
-        );
+        },
+        true
+    );
 
-    } else {
-
-        card.addEventListener(
-            "click",
-            function(event) {
-
-                if (
-                    event.target.closest(
-                        ".session-star"
-                    )
-                ) {
-                    return;
-                }
-
-                selectSession(
-                    session.id
-                );
-
-            }
-        );
-
-    }
+}
 
 
     return card;
