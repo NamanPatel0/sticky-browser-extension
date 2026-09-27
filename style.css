@@ -1837,3 +1837,21 @@
 #sticky-content::-webkit-scrollbar-thumb {
     background: rgba(40, 37, 33, 0.25);
 }
+
+#sticky-menu #new-session:hover {
+    color: #7ee2a8 !important;
+    background: rgba(80, 200, 120, 0.08);
+}
+
+#sticky-menu #new-session:hover .menu-icon {
+    color: #7ee2a8 !important;
+}
+
+#sticky-menu #close-sticky:hover {
+    color: #f28b8b !important;
+    background: rgba(220, 70, 70, 0.08);
+}
+
+#sticky-menu #close-sticky:hover .menu-icon {
+    color: #f28b8b !important;
+}
