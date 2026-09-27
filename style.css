@@ -1790,3 +1790,50 @@
 #sticky-box[data-theme="paper"] .session-star.starred {
     color: rgba(40, 37, 33, 0.9);
 }
+
+#sticky-box.fade-in {
+    animation: stickyFadeIn 0.22s ease-out;
+}
+
+@keyframes stickyFadeIn {
+
+    from {
+        opacity: 0;
+        transform: scale(0.98);
+    }
+
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+
+}
+
+/* =========================================================
+   NOTE SCROLLBAR
+========================================================= */
+
+#sticky-content::-webkit-scrollbar {
+    width: 4px;
+}
+
+#sticky-content::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+#sticky-content::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.25);
+    border-radius: 10px;
+}
+
+#sticky-content::-webkit-scrollbar-button {
+    display: none;
+}
+
+
+/* Paper theme */
+
+#sticky-box[data-theme="paper"]
+#sticky-content::-webkit-scrollbar-thumb {
+    background: rgba(40, 37, 33, 0.25);
+}

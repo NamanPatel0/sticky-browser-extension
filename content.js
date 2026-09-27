@@ -168,33 +168,12 @@ box.innerHTML = `
 
         <div class="setting-row">
 
-            <div>
-                <strong>Keep formatting</strong>
-                <small>Preserve styles when pasting text</small>
-            </div>
+    <div>
+        <strong>Quick shortcut</strong>
+        <small>Press Alt + S to open or close Sticky</small>
+    </div>
 
-            <input
-                type="checkbox"
-                id="keep-formatting"
-                checked
-            >
-
-        </div>
-
-        <div class="setting-row">
-
-            <div>
-                <strong>Compact images</strong>
-                <small>Fit pasted images inside the window</small>
-            </div>
-
-            <input
-                type="checkbox"
-                id="compact-images"
-                checked
-            >
-
-        </div>
+</div>
 
     </div>
 
@@ -477,10 +456,14 @@ chrome.storage.local.get(
 
         if (data.isOpen) {
 
-            box.style.display =
-                "block";
+    box.style.display =
+        "block";
 
-        }
+    box.classList.add(
+        "fade-in"
+    );
+
+}
 
     }
 );
@@ -672,13 +655,23 @@ if (newSession) {
         if (changes.isOpen) {
 
             if (
-                changes.isOpen.newValue
-            ) {
+    changes.isOpen.newValue
+) {
 
-                box.style.display =
-                    "block";
+    box.style.display =
+        "block";
 
-            } else {
+    box.classList.remove(
+        "fade-in"
+    );
+
+    void box.offsetWidth;
+
+    box.classList.add(
+        "fade-in"
+    );
+
+} else {
 
                 box.style.display =
                     "none";

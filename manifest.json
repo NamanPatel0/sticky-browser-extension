@@ -16,6 +16,15 @@
     "action": {
         "default_title": "Toggle Sticky"
     },
+    
+    "commands": {
+        "toggle-sticky": {
+            "suggested_key": {
+                "default": "Alt+S"
+            },
+            "description": "Toggle Sticky"
+        }
+    },
 
     "background": {
         "service_worker": "background.js"
