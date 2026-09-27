@@ -1995,14 +1995,6 @@ function renderSessions() {
 
     sessionList.innerHTML = "";
 
-
-    /*
-        The current session is shown first,
-        followed by previous sessions.
-
-        There is no separate CURRENT section.
-    */
-
     if (currentSession) {
 
         const currentCard =
@@ -2011,7 +2003,6 @@ function renderSessions() {
                 true
             );
 
-
         sessionList.appendChild(
             currentCard
         );
@@ -2019,11 +2010,31 @@ function renderSessions() {
     }
 
 
-    const reversed =
-        [...sessions].reverse();
+    const sorted =
+        [...sessions].sort(
+            function(a, b) {
+
+                if (
+                    a.starred &&
+                    !b.starred
+                ) {
+                    return -1;
+                }
+
+                if (
+                    !a.starred &&
+                    b.starred
+                ) {
+                    return 1;
+                }
+
+                return 0;
+
+            }
+        );
 
 
-    reversed.forEach(
+    sorted.forEach(
         function(session) {
 
             const card =
@@ -2031,7 +2042,6 @@ function renderSessions() {
                     session,
                     false
                 );
-
 
             sessionList.appendChild(
                 card
@@ -2051,14 +2061,11 @@ function renderSessions() {
                 "div"
             );
 
-
         empty.className =
             "sessions-empty";
 
-
         empty.textContent =
             "No sessions";
-
 
         sessionList.appendChild(
             empty
@@ -2083,10 +2090,8 @@ function createSessionCard(
             "button"
         );
 
-
     card.type =
         "button";
-
 
     card.className =
         "session-card";
@@ -2106,10 +2111,8 @@ function createSessionCard(
             "div"
         );
 
-
     title.className =
         "session-name";
-
 
     title.textContent =
         session.name ||
@@ -2121,10 +2124,8 @@ function createSessionCard(
             "div"
         );
 
-
     preview.className =
         "session-preview";
-
 
     preview.textContent =
         getPreview(session);
@@ -2134,57 +2135,99 @@ function createSessionCard(
         title
     );
 
-
     card.appendChild(
         preview
     );
 
 
     /*
-        Previous sessions get a delete button.
-        The current session does not.
+        Star button
     */
 
-    if (!isCurrent) {
+if (!isCurrent) {
 
-        const deleteButton =
-            document.createElement(
-                "span"
+    const star =
+        document.createElement(
+            "span"
+        );
+
+    star.className =
+        "session-star";
+
+    star.textContent =
+        "☆";
+
+    if (session.starred) {
+
+        star.textContent =
+            "★";
+
+        star.classList.add(
+            "starred"
+        );
+
+    }
+
+    star.addEventListener(
+        "click",
+        function(event) {
+
+            event.preventDefault();
+            event.stopPropagation();
+
+            toggleSessionStar(
+                session.id
             );
 
+        }
+    );
 
-        deleteButton.className =
-            "session-delete";
+    card.appendChild(
+        star
+    );
 
-
-        deleteButton.textContent =
-            "×";
-
-
-        deleteButton.title =
-            "Delete session";
+}
 
 
-deleteButton.addEventListener(
-    "click",
-    function(event) {
+/*
+    Delete button
+*/
 
-        event.preventDefault();
-        event.stopPropagation();
+if (!isCurrent) {
 
-        deleteSession(
-            session.id
+    const deleteButton =
+        document.createElement(
+            "span"
         );
 
-    }
-);
+    deleteButton.className =
+        "session-delete";
 
+    deleteButton.textContent =
+        "×";
 
-        card.appendChild(
-            deleteButton
-        );
+    deleteButton.title =
+        "Delete session";
 
-    }
+    deleteButton.addEventListener(
+        "click",
+        function(event) {
+
+            event.preventDefault();
+            event.stopPropagation();
+
+            deleteSession(
+                session.id
+            );
+
+        }
+    );
+
+    card.appendChild(
+        deleteButton
+    );
+
+}
 
 
     if (isCurrent) {
@@ -2194,14 +2237,11 @@ deleteButton.addEventListener(
                 "div"
             );
 
-
         currentLabel.className =
             "session-current-label";
 
-
         currentLabel.textContent =
             "CURRENT";
-
 
         card.appendChild(
             currentLabel
@@ -2219,31 +2259,63 @@ deleteButton.addEventListener(
             true
         );
 
-} else {
+    } else {
 
-    card.addEventListener(
-        "click",
-        function(event) {
+        card.addEventListener(
+            "click",
+            function(event) {
 
-            if (
-                event.target.closest(
-                    ".session-delete"
-                )
-            ) {
-                return;
+                if (
+                    event.target.closest(
+                        ".session-star"
+                    )
+                ) {
+                    return;
+                }
+
+                selectSession(
+                    session.id
+                );
+
             }
+        );
 
-            selectSession(
-                session.id
-            );
-
-        }
-    );
-
-}
+    }
 
 
     return card;
+
+}
+
+function toggleSessionStar(id) {
+
+    const index =
+        sessions.findIndex(
+            function(session) {
+
+                return session.id === id;
+
+            }
+        );
+
+
+    if (index === -1) {
+        return;
+    }
+
+
+    sessions[index].starred =
+        !sessions[index].starred;
+
+
+    chrome.storage.local.set(
+        {
+            sessions: sessions
+        }
+    );
+
+
+    renderSessions();
 
 }
 

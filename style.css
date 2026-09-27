@@ -1728,3 +1728,65 @@
     background:
         rgba(40, 37, 33, 0.10);
 }
+
+.session-card {
+    position: relative;
+}
+
+.session-star {
+    position: absolute;
+    right: 42px;
+    top: 50%;
+
+    transform:
+        translateY(-50%)
+        scale(1);
+
+    font-size: 19px;
+    line-height: 1;
+
+    color: rgba(255, 255, 255, 0.35);
+
+    cursor: pointer;
+
+    transition:
+        color 0.18s ease,
+        transform 0.18s ease;
+}
+
+.session-star:hover {
+    color: rgba(255, 255, 255, 0.8);
+
+    transform:
+        translateY(-50%)
+        scale(1.1);
+}
+
+.session-star.starred {
+    color: rgba(255, 255, 255, 0.9);
+
+    transform:
+        translateY(-50%)
+        scale(1.05);
+}
+
+.session-star.starred:hover {
+    transform:
+        translateY(-50%)
+        scale(1.15);
+}
+
+
+/* Paper theme */
+
+#sticky-box[data-theme="paper"] .session-star {
+    color: rgba(40, 37, 33, 0.35);
+}
+
+#sticky-box[data-theme="paper"] .session-star:hover {
+    color: rgba(40, 37, 33, 0.8);
+}
+
+#sticky-box[data-theme="paper"] .session-star.starred {
+    color: rgba(40, 37, 33, 0.9);
+}
