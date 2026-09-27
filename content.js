@@ -543,32 +543,26 @@ chrome.storage.onChanged.addListener(
 
 if (newSession) {
 
-    const previousId =
-        currentSession
-            ? currentSession.id
-            : null;
+    clearTimeout(
+        saveTimer
+    );
+
+    pendingSave = false;
 
     currentSession = {
         ...newSession
     };
 
-    /*
-        Do not reload the inputs when the same
-        session is being saved.
-
-        Otherwise typing in the title/content
-        gets overwritten by storage.onChanged.
-    */
-
     if (
         !isHomeOpen &&
-        !isDragging &&
-        previousId !== newSession.id
+        !isDragging
     ) {
 
-        loadSession(
-            newSession
-        );
+        titleInput.value =
+            newSession.name || "";
+
+        content.innerHTML =
+            newSession.text || "";
 
     }
 
