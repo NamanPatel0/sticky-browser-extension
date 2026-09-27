@@ -364,7 +364,7 @@ function createDefaultSession() {
     return {
         id: Date.now().toString(),
 
-        name: "Untitled",
+        name: "",
 
         text: "",
 
@@ -504,11 +504,6 @@ function loadSession(session) {
     };
 
 
-    /*
-        Position and size come from the global
-        Sticky geometry, NOT the session.
-    */
-
     box.style.left =
         Math.max(
             0,
@@ -536,7 +531,7 @@ function loadSession(session) {
 
 
     titleInput.value =
-        session.name || "Untitled";
+        session.name || "";
 
     content.value =
         session.text || "";
@@ -566,25 +561,38 @@ chrome.storage.onChanged.addListener(
                 changes.currentSession.newValue;
 
 
-            if (newSession) {
+if (newSession) {
 
-                currentSession = {
-                    ...newSession
-                };
+    const previousId =
+        currentSession
+            ? currentSession.id
+            : null;
 
-            }
+    currentSession = {
+        ...newSession
+    };
 
+    /*
+        Do not reload the inputs when the same
+        session is being saved.
 
-            if (
-                !isHomeOpen &&
-                !isDragging
-            ) {
+        Otherwise typing in the title/content
+        gets overwritten by storage.onChanged.
+    */
 
-                loadSession(
-                    newSession
-                );
+    if (
+        !isHomeOpen &&
+        !isDragging &&
+        previousId !== newSession.id
+    ) {
 
-            }
+        loadSession(
+            newSession
+        );
+
+    }
+
+}
 
 
             if (isHomeOpen) {
@@ -1478,7 +1486,7 @@ function createNewSession() {
 
 
             titleInput.value =
-                "Untitled";
+                "";
 
 
             content.value =
@@ -1831,7 +1839,7 @@ function closeHome() {
 
                         titleInput.value =
                             currentSession.name ||
-                            "Untitled";
+                            "";
 
 
                         content.value =
@@ -2207,7 +2215,7 @@ function selectSession(id) {
 
             titleInput.value =
                 selectedCopy.name ||
-                "Untitled";
+                "";
 
 
             content.value =
