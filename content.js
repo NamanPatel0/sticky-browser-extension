@@ -208,7 +208,7 @@ box.innerHTML = `
             <span>New</span>
         </button>
 
-        <button id="settings">
+        <button id="sticky-settings">
             <span class="menu-icon">⚙</span>
             <span>Settings</span>
         </button>
@@ -280,7 +280,7 @@ const homeNewSession =
     document.getElementById("home-new-session");
 
 const settingsButton =
-    document.getElementById("settings");
+    document.getElementById("sticky-settings");
 
 const settingsClose =
     document.getElementById("settings-close");
@@ -294,7 +294,7 @@ const closeStickyButton =
 
 /* ======================================================
    TITLE INPUT STYLE
-   ====================================================== */
+====================================================== */
 
 titleInput.style.cssText = `
     display: block;
@@ -528,7 +528,6 @@ function loadSession(session) {
             220
         ) + "px";
 
-
     box.style.height =
         Math.max(
             Number(stickyGeometry.height) || 310,
@@ -538,7 +537,6 @@ function loadSession(session) {
 
     titleInput.value =
         session.name || "Untitled";
-
 
     content.value =
         session.text || "";
@@ -736,7 +734,6 @@ function applyGeometry() {
             220
         ) + "px";
 
-
     box.style.height =
         Math.max(
             Number(stickyGeometry.height) || 310,
@@ -755,12 +752,6 @@ dragHandle.addEventListener(
     function(event) {
 
         if (isHomeOpen) {
-            return;
-        }
-
-        if (
-            settingsView.classList.contains("show")
-        ) {
             return;
         }
 
@@ -1275,7 +1266,7 @@ document.addEventListener(
 ====================================================== */
 
 settingsButton.addEventListener(
-    "pointerdown",
+    "click",
     function(event) {
 
         event.preventDefault();
@@ -1339,7 +1330,7 @@ function closeSettings() {
 
 
 settingsClose.addEventListener(
-    "pointerdown",
+    "click",
     function(event) {
 
         event.preventDefault();
@@ -1362,6 +1353,7 @@ closeStickyButton.addEventListener(
 
         event.preventDefault();
         event.stopPropagation();
+
 
         closeMenu();
         closeSettings();
@@ -1387,6 +1379,7 @@ newSessionButton.addEventListener(
         event.preventDefault();
         event.stopPropagation();
 
+
         createNewSession();
 
     },
@@ -1400,6 +1393,7 @@ homeNewSession.addEventListener(
 
         event.preventDefault();
         event.stopPropagation();
+
 
         createNewSession();
 
