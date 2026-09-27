@@ -55,10 +55,6 @@ box.innerHTML = `
 
         </div>
 
-        <div class="previous-heading">
-            SESSIONS
-        </div>
-
         <div id="session-list"></div>
 
         <button id="home-new-session">
@@ -1341,10 +1337,6 @@ menuButton.addEventListener(
         event.stopPropagation();
 
 
-        if (isHomeOpen) {
-            return;
-        }
-
 
         if (
             settingsView.classList.contains(
@@ -1431,12 +1423,9 @@ settingsButton.addEventListener(
 
 function openSettings() {
 
-    if (isHomeOpen) {
-
-        closeHome();
-
-    }
-
+homeView.classList.remove(
+    "show"
+);
 
     closeMenu();
 
@@ -2220,15 +2209,58 @@ function createSessionCard(
 
 function getPreview(session) {
 
+    const html =
+        session.text || "";
+
+
+    if (!html.trim()) {
+
+        return "Empty note";
+
+    }
+
+
+    const temp =
+        document.createElement("div");
+
+    temp.innerHTML =
+        html;
+
+
+    /*
+        Replace every image with a simple
+        <image> label before extracting text.
+    */
+
+    const images =
+        temp.querySelectorAll("img");
+
+
+    images.forEach(
+        function(image) {
+
+            const imageLabel =
+                document.createTextNode(
+                    "<image>"
+                );
+
+            image.replaceWith(
+                imageLabel
+            );
+
+        }
+    );
+
+
     const text =
-        (session.text || "")
+        temp.textContent
             .replace(/\s+/g, " ")
             .trim();
 
 
     if (!text) {
 
-        return "Empty note";
+        return "<image>";
 
     }
 
