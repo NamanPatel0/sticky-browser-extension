@@ -2236,19 +2236,20 @@ if (!isCurrent) {
     deleteButton.title =
         "Delete session";
 
-    deleteButton.addEventListener(
-        "click",
-        function(event) {
+deleteButton.addEventListener(
+    "pointerdown",
+    function(event) {
 
-            event.preventDefault();
-            event.stopPropagation();
+        event.preventDefault();
+        event.stopPropagation();
 
-            deleteSession(
-                session.id
-            );
+        deleteSession(
+            session.id
+        );
 
-        }
-    );
+    },
+    true
+);
 
     card.appendChild(
         deleteButton
@@ -2301,20 +2302,31 @@ if (isCurrent) {
 
 } else {
 
-    card.addEventListener(
-        "pointerdown",
-        function(event) {
+card.addEventListener(
+    "pointerdown",
+    function(event) {
 
-            event.preventDefault();
-            event.stopPropagation();
+        if (
+            event.target.closest(
+                ".session-delete"
+            ) ||
+            event.target.closest(
+                ".session-star"
+            )
+        ) {
+            return;
+        }
 
-            selectSession(
-                session.id
-            );
+        event.preventDefault();
+        event.stopPropagation();
 
-        },
-        true
-    );
+        selectSession(
+            session.id
+        );
+
+    },
+    true
+);
 
 }
 
