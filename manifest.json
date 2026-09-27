@@ -16,6 +16,10 @@
     "action": {
         "default_title": "Toggle Sticky"
     },
+
+    "icons": {
+    "128": "icon128.png"
+    },
     
     "commands": {
         "toggle-sticky": {
