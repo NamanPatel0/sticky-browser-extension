@@ -1,64 +1,160 @@
+/* ======================================================
+   RESET & BASE
+====================================================== */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
 body {
-    margin: 0;
-    padding: 30px;
-
-    font-family: Arial, sans-serif;
-
-    background: #f5f5f5;
-    color: #111;
+  background-color: #0f0f12;
+  color: #f4f4f5;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  line-height: 1.5;
+  min-height: 100vh;
+  padding: 32px 20px;
+  -webkit-font-smoothing: antialiased;
 }
 
-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-
-    margin-bottom: 40px;
+.container {
+  max-width: 980px;
+  margin: 0 auto;
 }
 
-h1 {
-    margin: 0;
+/* ======================================================
+   HEADER
+====================================================== */
+.home-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-bottom: 24px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  margin-bottom: 28px;
 }
 
-h2 {
-    margin-bottom: 15px;
+.brand .label {
+  display: block;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  color: rgba(244, 244, 245, 0.45);
+  margin-bottom: 2px;
 }
 
-button {
-    padding: 10px 16px;
-
-    border: 1px solid #111;
-    background: white;
-
-    cursor: pointer;
+.brand h1 {
+  font-size: 26px;
+  font-weight: 700;
+  color: #f4f4f5;
 }
 
-section {
-    margin-bottom: 40px;
+.btn-primary {
+  background: #3b82f6;
+  color: #ffffff;
+  border: none;
+  font-family: inherit;
+  font-size: 13.5px;
+  font-weight: 600;
+  padding: 9px 18px;
+  border-radius: 8px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.35);
+  transition: background-color 0.15s ease, transform 0.15s ease;
 }
 
+.btn-primary:hover {
+  background: #2563eb;
+  transform: translateY(-1px);
+}
+
+.btn-primary:active {
+  transform: translateY(0);
+}
+
+/* ======================================================
+   SECTIONS & GRID
+====================================================== */
+.session-section {
+  margin-bottom: 32px;
+}
+
+.session-section h2 {
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: rgba(244, 244, 245, 0.5);
+  margin-bottom: 14px;
+}
+
+.session-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 14px;
+}
+
+/* ======================================================
+   SESSION CARDS
+====================================================== */
 .session-card {
-    background: white;
-
-    border: 1px solid #ccc;
-
-    padding: 20px;
-
-    margin-bottom: 10px;
-
-    cursor: pointer;
+  background: #18181b;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+  padding: 16px;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  transition: transform 0.18s cubic-bezier(0.16, 1, 0.3, 1),
+              border-color 0.18s ease,
+              background-color 0.18s ease,
+              box-shadow 0.18s ease;
 }
 
 .session-card:hover {
-    border-color: #111;
+  background: #202024;
+  border-color: rgba(255, 255, 255, 0.2);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
+}
+
+.session-card.current {
+  border-color: rgba(59, 130, 246, 0.5);
+  background: rgba(59, 130, 246, 0.06);
 }
 
 .session-name {
-    font-weight: bold;
-    margin-bottom: 8px;
+  font-size: 15px;
+  font-weight: 600;
+  color: #f4f4f5;
+  margin-bottom: 6px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .session-preview {
-    color: #666;
-    white-space: pre-wrap;
+  font-size: 13px;
+  color: rgba(244, 244, 245, 0.55);
+  line-height: 1.45;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
+  -webkit-box-orient: vertical;
+  word-break: break-word;
+}
+
+.empty-state {
+  grid-column: 1 / -1;
+  text-align: center;
+  padding: 36px 0;
+  color: rgba(244, 244, 245, 0.4);
+  font-size: 13.5px;
+  border: 1px dashed rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
 }

@@ -1,158 +1,121 @@
-function loadSessions() {
+// Reusable static parser to avoid DOM allocation thrashing
+const previewParser = document.createElement("div");
 
-    chrome.storage.local.get(
-        ["currentSession", "sessions"],
-        function(data) {
+function extractPreview(html) {
+  if (!html || !html.trim()) return "Empty session";
 
-            const current = data.currentSession;
-            const sessions = data.sessions || [];
+  previewParser.innerHTML = html;
+  previewParser.querySelectorAll("img").forEach((img) => {
+    img.replaceWith(document.createTextNode("<image> "));
+  });
 
-            const currentContainer =
-                document.getElementById("current-session");
-
-            const sessionsContainer =
-                document.getElementById("sessions");
-
-
-            // Current session
-
-            currentContainer.innerHTML = "";
-
-            if (current) {
-
-                const card = createSessionCard(current);
-
-                currentContainer.appendChild(card);
-
-            }
-
-
-            // Previous sessions
-
-            sessionsContainer.innerHTML = "";
-
-            if (sessions.length === 0) {
-
-                sessionsContainer.textContent =
-                    "No previous sessions.";
-
-                return;
-            }
-
-
-            sessions.forEach(function(session) {
-
-                const card = createSessionCard(session);
-
-                sessionsContainer.appendChild(card);
-
-            });
-
-        }
-    );
+  const text = previewParser.textContent.replace(/\s+/g, " ").trim();
+  return text ? (text.length > 120 ? `${text.substring(0, 120)}...` : text) : "<image>";
 }
 
+async function loadSessions() {
+  const { currentSession, sessions = [] } = await chrome.storage.local.get([
+    "currentSession",
+    "sessions"
+  ]);
 
-function createSessionCard(session) {
+  const currentContainer = document.getElementById("current-session");
+  const sessionsContainer = document.getElementById("sessions");
 
-    const card = document.createElement("div");
+  // Render Current Session
+  currentContainer.innerHTML = "";
+  if (currentSession) {
+    currentContainer.appendChild(createSessionCard(currentSession, true));
+  } else {
+    currentContainer.innerHTML = `<div class="empty-state">No active session</div>`;
+  }
 
-    card.className = "session-card";
+  // Render Previous Sessions
+  sessionsContainer.innerHTML = "";
+  if (sessions.length === 0) {
+    sessionsContainer.innerHTML = `<div class="empty-state">No previous sessions saved yet.</div>`;
+    return;
+  }
 
-    const name = document.createElement("div");
-
-    name.className = "session-name";
-
-    name.textContent = session.name;
-
-
-    const preview = document.createElement("div");
-
-    preview.className = "session-preview";
-
-    preview.textContent =
-        session.text || "Empty session";
-
-
-    card.appendChild(name);
-
-    card.appendChild(preview);
-
-
-    // Load this session
-
-    card.addEventListener("click", function() {
-
-        chrome.storage.local.set({
-
-            currentSession: session
-
-        });
-
-    });
-
-
-    return card;
+  // Sort starred sessions first
+  const sorted = [...sessions].sort((a, b) => (b.starred ? 1 : 0) - (a.starred ? 1 : 0));
+  sorted.forEach((session) => {
+    sessionsContainer.appendChild(createSessionCard(session, false));
+  });
 }
 
+function createSessionCard(session, isCurrent) {
+  const card = document.createElement("div");
+  card.className = `session-card${isCurrent ? " current" : ""}`;
 
-// New session
+  const name = document.createElement("div");
+  name.className = "session-name";
+  name.textContent = session.name || "Untitled";
 
-document.getElementById("new-session")
-    .addEventListener("click", function() {
+  const preview = document.createElement("div");
+  preview.className = "session-preview";
+  preview.textContent = extractPreview(session.text);
 
-        chrome.storage.local.get(
-            ["currentSession", "sessions"],
-            function(data) {
+  card.appendChild(name);
+  card.appendChild(preview);
 
-                const current = data.currentSession;
+  // Switch to this session
+  card.addEventListener("click", async () => {
+    if (isCurrent) return; // Already active
 
-                const sessions = data.sessions || [];
+    const { currentSession: oldCurrent, sessions = [] } = await chrome.storage.local.get([
+      "currentSession",
+      "sessions"
+    ]);
 
+    const remaining = sessions.filter((s) => String(s.id) !== String(session.id));
 
-                if (current) {
+    // Archive old current session if it has content
+    if (oldCurrent && (oldCurrent.name?.trim() || oldCurrent.text?.trim())) {
+      remaining.push(oldCurrent);
+    }
 
-                    sessions.push(current);
-
-                }
-
-
-                const newSession = {
-
-                    id: Date.now().toString(),
-
-                    name: "Untitled",
-
-                    text: "",
-
-                    image: "",
-
-                    x: 100,
-
-                    y: 100,
-
-                    width: 300,
-
-                    height: 200
-
-                };
-
-
-                chrome.storage.local.set({
-
-                    currentSession: newSession,
-
-                    sessions: sessions
-
-                });
-
-
-                loadSessions();
-
-            }
-        );
-
+    await chrome.storage.local.set({
+      currentSession: session,
+      sessions: remaining,
+      isOpen: true
     });
 
+    loadSessions();
+  });
 
+  return card;
+}
+
+// Create New Session Button
+document.getElementById("new-session").addEventListener("click", async () => {
+  const { currentSession: oldCurrent, sessions = [] } = await chrome.storage.local.get([
+    "currentSession",
+    "sessions"
+  ]);
+
+  const updatedSessions = [...sessions];
+
+  // Archive old session if not empty
+  if (oldCurrent && (oldCurrent.name?.trim() || oldCurrent.text?.trim())) {
+    updatedSessions.push(oldCurrent);
+  }
+
+  const newSession = {
+    id: Date.now().toString(),
+    name: "Untitled",
+    text: "",
+    image: ""
+  };
+
+  await chrome.storage.local.set({
+    currentSession: newSession,
+    sessions: updatedSessions,
+    isOpen: true
+  });
+
+  loadSessions();
+});
+
+// Initial load
 loadSessions();

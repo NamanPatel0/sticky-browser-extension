@@ -1855,3 +1855,44 @@
 #sticky-menu #close-sticky:hover .menu-icon {
     color: #f28b8b !important;
 }
+/* ======================================================
+   SCOPED BUTTONS & DRAG HANDLE (Fixes host page style leaks)
+====================================================== */
+#sticky-box #home-button {
+    position: absolute !important;
+    left: 8px !important;
+    top: 4px !important;
+}
+
+#sticky-box #drag-handle {
+    position: absolute !important;
+    left: 50% !important;
+    top: 19px !important;
+    transform: translateX(-50%) scaleX(1) !important;
+    transition: transform 0.15s ease, width 0.15s ease;
+}
+
+#sticky-box #drag-handle:hover {
+    width: 88px !important;
+    transform: translateX(-50%) scaleX(1.04) !important;
+}
+
+#sticky-box.dragging #drag-handle {
+    width: 96px !important;
+    transform: translateX(-50%) scaleX(1.08) !important;
+}
+
+#sticky-box #menu-button {
+    position: absolute !important;
+    right: 8px !important;
+    top: 4px !important;
+}
+
+/* Ensure overlay does not capture clicks unless opened */
+#sticky-overlay {
+    pointer-events: none;
+}
+#sticky-overlay.show {
+    pointer-events: auto !important;
+}
+

@@ -1,35 +1,36 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>Sticky - Home</title>
-    <link rel="stylesheet" href="home.css">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sticky - Sessions</title>
+  <link rel="stylesheet" href="home.css">
 </head>
-
 <body>
-
-    <header>
-        <h1>Sticky</h1>
-
-        <button id="new-session">New Session</button>
+  <div class="container">
+    <header class="home-header">
+      <div class="brand">
+        <span class="label">STICKY</span>
+        <h1>Sessions</h1>
+      </div>
+      <button id="new-session" type="button" class="btn-primary">
+        <span>+</span> New Session
+      </button>
     </header>
 
-    <main>
+    <main class="home-main">
+      <section class="session-section">
+        <h2>Current Session</h2>
+        <div id="current-session" class="session-grid"></div>
+      </section>
 
-        <section>
-            <h2>Current Session</h2>
-
-            <div id="current-session"></div>
-        </section>
-
-        <section>
-            <h2>Previous Sessions</h2>
-
-            <div id="sessions"></div>
-        </section>
-
+      <section class="session-section">
+        <h2>Previous Sessions</h2>
+        <div id="sessions" class="session-grid"></div>
+      </section>
     </main>
+  </div>
 
-    <script src="home.js"></script>
-
+  <script src="home.js"></script>
 </body>
 </html>

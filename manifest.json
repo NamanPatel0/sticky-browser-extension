@@ -3,24 +3,21 @@
     "name": "Sticky",
     "version": "1.0",
     "description": "A persistent sticky note for the browser.",
-
     "permissions": [
         "storage",
-        "tabs"
+        "unlimitedStorage",
+        "activeTab",
+        "scripting"
     ],
-
     "host_permissions": [
         "<all_urls>"
     ],
-
     "action": {
         "default_title": "Toggle Sticky"
     },
-
     "icons": {
-    "128": "icon128.png"
+        "128": "icon128.png"
     },
-    
     "commands": {
         "toggle-sticky": {
             "suggested_key": {
@@ -29,16 +26,21 @@
             "description": "Toggle Sticky"
         }
     },
-
     "background": {
         "service_worker": "background.js"
     },
-
     "content_scripts": [
         {
             "matches": ["<all_urls>"],
             "js": ["content.js"],
-            "css": ["style.css"]
+            "css": ["style.css"],
+            "run_at": "document_end"
+        }
+    ],
+    "web_accessible_resources": [
+        {
+            "resources": ["home.html", "home.css", "home.js"],
+            "matches": ["<all_urls>"]
         }
     ]
 }

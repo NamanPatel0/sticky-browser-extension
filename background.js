@@ -1,42 +1,47 @@
-function toggleSticky() {
+async function toggleSticky() {
+  try {
+    const { isOpen = false } = await chrome.storage.local.get("isOpen");
+    const nextState = !isOpen;
 
-    chrome.storage.local.get(
-        ["isOpen"],
-        function(data) {
+    await chrome.storage.local.set({ isOpen: nextState });
 
-            const newState =
-                !data.isOpen;
+    // Only inspect tabs if we are opening Sticky and need to verify injection
+    if (nextState) {
+      const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+      if (!tab?.id || !tab.url) return;
 
-            chrome.storage.local.set({
-                isOpen: newState
+      const isRestricted = /^(chrome|chrome-extension|edge|about|devtools):/i.test(tab.url);
+      if (isRestricted) return;
+
+      // Ping tab; if content script is missing, dynamically inject it
+      chrome.tabs.sendMessage(tab.id, { action: "PING" }, async () => {
+        if (chrome.runtime.lastError) {
+          try {
+            await chrome.scripting.executeScript({
+              target: { tabId: tab.id },
+              files: ["content.js"]
             });
-
+            await chrome.scripting.insertCSS({
+              target: { tabId: tab.id },
+              files: ["style.css"]
+            });
+          } catch (err) {
+            // Tab closed or navigation occurred during injection
+          }
         }
-    );
-
+      });
+    }
+  } catch (error) {
+    console.error("Sticky background toggle error:", error);
+  }
 }
 
+// Action icon click
+chrome.action.onClicked.addListener(toggleSticky);
 
-chrome.action.onClicked.addListener(
-    function() {
-
-        toggleSticky();
-
-    }
-);
-
-
-chrome.commands.onCommand.addListener(
-    function(command) {
-
-        if (
-            command ===
-            "toggle-sticky"
-        ) {
-
-            toggleSticky();
-
-        }
-
-    }
-);
+// Shortcut command (Alt + S)
+chrome.commands.onCommand.addListener((command) => {
+  if (command === "toggle-sticky") {
+    toggleSticky();
+  }
+});
