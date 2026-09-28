@@ -1,9 +1,26 @@
 (() => {
-    // 1. Guard against duplicate injection
-    if (document.getElementById("sticky-box")) {
+    if (document.getElementById("sticky-host-root")) {
         return;
     }
 
+    /* ======================================================
+       1. SHADOW DOM ISOLATION (HOST-PAGE CSS IMMUNITY)
+    ====================================================== */
+    const host = document.createElement("div");
+    host.id = "sticky-host-root";
+    host.style.cssText = "all: initial !important; position: static !important; z-index: 2147483647 !important;";
+
+    const shadow = host.attachShadow({ mode: "open" });
+    document.body.appendChild(host);
+
+    const styleLink = document.createElement("link");
+    styleLink.rel = "stylesheet";
+    styleLink.href = chrome.runtime.getURL("style.css");
+    shadow.appendChild(styleLink);
+
+    /* ======================================================
+       2. DOM STRUCTURE
+    ====================================================== */
     const box = document.createElement("div");
     box.id = "sticky-box";
 
@@ -94,6 +111,11 @@
                     <small>Press Alt + S to open or close Sticky</small>
                 </div>
             </div>
+            <div class="settings-footer-links">
+    <a href="https://github.com/NamanPatel0/sticky-browser-extension/tree/main?tab=readme-ov-file" target="_blank" rel="noopener noreferrer" class="settings-link">GitHub</a>
+    <span class="settings-sep">·</span>
+    <a href="https://ko-fi.com/naman_patel" target="_blank" rel="noopener noreferrer" class="settings-link">Ko-fi ⭐</a>
+</div>
         </div>
 
         <div id="sticky-menu">
@@ -105,7 +127,7 @@
                 <span class="menu-icon">⚙</span>
                 <span>Settings</span>
             </button>
-            <button id="close-sticky" class="close-option">
+            <button id="close-sticky">
                 <span class="menu-icon">×</span>
                 <span>Close</span>
             </button>
@@ -113,7 +135,6 @@
 
         <div id="sticky-toast"></div>
 
-        <!-- IMAGE RESIZER OVERLAY -->
         <div id="image-resizer">
             <div class="img-resizer-pill">
                 <button type="button" class="img-size-btn" data-width="33%">33%</button>
@@ -125,18 +146,12 @@
         </div>
     `;
 
-    document.body.appendChild(box);
+    shadow.appendChild(box);
 
-    /* ======================================================
-       OVERLAY
-    ====================================================== */
     const overlay = document.createElement("div");
     overlay.id = "sticky-overlay";
-    document.body.appendChild(overlay);
+    shadow.appendChild(overlay);
 
-    /* ======================================================
-       INJECT STYLES FOR TOAST & RESIZER
-    ====================================================== */
     const extraStyles = document.createElement("style");
     extraStyles.textContent = `
         #sticky-toast {
@@ -166,7 +181,6 @@
             transform: translateX(-50%) translateY(0);
         }
 
-        /* IMAGE RESIZER */
         #image-resizer {
             position: absolute;
             display: none;
@@ -225,18 +239,15 @@
         #sticky-content img {
             cursor: pointer;
             transition: outline 0.15s ease;
-            max-width: 100%;
-            border-radius: 4px;
-            display: inline-block;
         }
         #sticky-content img:hover {
             outline: 2px dashed #3b82f6;
         }
     `;
-    document.head.appendChild(extraStyles);
+    shadow.appendChild(extraStyles);
 
     /* ======================================================
-       ELEMENTS
+       3. ELEMENTS
     ====================================================== */
     const content = box.querySelector("#sticky-content");
     const titleInput = box.querySelector("#sticky-title");
@@ -259,7 +270,7 @@
     const resizeHandle = imageResizer.querySelector(".img-resize-handle");
 
     /* ======================================================
-       STATE
+       4. STATE & POOLS
     ====================================================== */
     let currentSession = null;
     let sessions = [];
@@ -267,15 +278,20 @@
     let isDragging = false;
     let offsetX = 0;
     let offsetY = 0;
+    let dragRafId = null;
     let isHomeOpen = false;
     let homeGeometry = null;
-    let suppressResizeSave = false;
+    let suppressResizeSave = true;
     let saveTimer = null;
     let geometrySaveTimer = null;
+    let scrollSaveTimer = null;
     let closeHomeTimer = null;
     let toastTimer = null;
     let activePointerId = null;
     let selectedImg = null;
+    let isRestoringScroll = false;
+
+    const previewPool = document.createElement("div");
 
     function showToast(message) {
         toast.textContent = message;
@@ -291,7 +307,7 @@
             id: Date.now().toString(),
             name: "",
             text: "",
-            image: ""
+            scrollTop: 0
         };
     }
 
@@ -313,11 +329,129 @@
     }
 
     /* ======================================================
-       LOAD DATA
+       5. SCROLL RESTORATION HELPER
+    ====================================================== */
+    function restoreScrollPosition(top) {
+        if (typeof top !== "number") return;
+        isRestoringScroll = true;
+        content.scrollTop = top;
+
+        requestAnimationFrame(() => {
+            content.scrollTop = top;
+            setTimeout(() => {
+                isRestoringScroll = false;
+            }, 60);
+        });
+
+        const imgs = content.querySelectorAll("img");
+        imgs.forEach(img => {
+            if (!img.complete) {
+                img.addEventListener("load", () => {
+                    content.scrollTop = top;
+                }, { once: true });
+            }
+        });
+    }
+
+    /* ======================================================
+       6. STRIP FOREIGN CLASSES & INLINE STYLES
+    ====================================================== */
+    function cleanContentStyles(shouldPersist = false) {
+        if (!content) return;
+        let modified = false;
+
+        const allChildren = content.querySelectorAll("*");
+        const len = allChildren.length;
+
+        for (let i = 0; i < len; i++) {
+            const el = allChildren[i];
+            if (el.hasAttribute("class")) {
+                el.removeAttribute("class");
+                modified = true;
+            }
+            if (el.hasAttribute("id")) {
+                el.removeAttribute("id");
+                modified = true;
+            }
+            if (el.tagName !== "IMG") {
+                if (el.style.color || el.style.backgroundColor || el.style.background || el.style.border || el.style.padding || el.style.margin || el.style.position || el.style.float) {
+                    el.style.color = "";
+                    el.style.backgroundColor = "";
+                    el.style.background = "";
+                    el.style.border = "";
+                    el.style.padding = "";
+                    el.style.margin = "";
+                    el.style.position = "";
+                    el.style.float = "";
+                    modified = true;
+                }
+            }
+        }
+
+        if (modified && shouldPersist && currentSession) {
+            currentSession.text = content.innerHTML;
+            scheduleSave();
+        }
+    }
+
+    /* ======================================================
+       7. IMAGE CONVERSION TO DATA URLS (CSP/CORS IMMUNITY)
+    ====================================================== */
+    function convertExternalImages() {
+        if (!content) return;
+        const images = content.querySelectorAll("img");
+        images.forEach(img => {
+            const rawSrc = img.getAttribute("src") || img.src;
+            if (!rawSrc || rawSrc.startsWith("data:") || img.dataset.converting === "true" || img.dataset.convertFailed === "true") {
+                return;
+            }
+
+            img.dataset.converting = "true";
+            const absoluteUrl = img.src;
+
+            chrome.runtime.sendMessage(
+                { action: "FETCH_IMAGE_AS_DATA_URL", url: absoluteUrl },
+                (response) => {
+                    delete img.dataset.converting;
+                    if (response && response.success && response.dataUrl) {
+                        img.src = response.dataUrl;
+                        if (currentSession) {
+                            currentSession.text = content.innerHTML;
+                            scheduleSave();
+                        }
+                    } else {
+                        img.dataset.convertFailed = "true";
+                    }
+                }
+            );
+        });
+    }
+
+    function insertNodeAtSelection(node) {
+        const selection = shadow.getSelection ? shadow.getSelection() : window.getSelection();
+        if (!selection || selection.rangeCount === 0) {
+            content.appendChild(node);
+        } else {
+            const range = selection.getRangeAt(0);
+            if (!content.contains(range.commonAncestorContainer)) {
+                content.appendChild(node);
+            } else {
+                range.deleteContents();
+                range.insertNode(node);
+                range.setStartAfter(node);
+                range.collapse(true);
+                selection.removeAllRanges();
+                selection.addRange(range);
+            }
+        }
+    }
+
+    /* ======================================================
+       8. LOAD DATA
     ====================================================== */
     chrome.storage.local.get(
         ["currentSession", "sessions", "stickyGeometry", "isOpen", "stickyTheme"],
-        function(data) {
+        (data) => {
             currentSession = data.currentSession ? { ...data.currentSession } : createDefaultSession();
             sessions = Array.isArray(data.sessions) ? data.sessions.map(s => ({ ...s })) : [];
 
@@ -328,6 +462,7 @@
                 chrome.storage.local.set({ stickyGeometry });
             }
 
+            suppressResizeSave = true;
             loadSession(currentSession);
             setTheme(data.stickyTheme || "monochrome");
 
@@ -335,6 +470,10 @@
                 box.style.display = "block";
                 box.classList.add("fade-in");
             }
+
+            setTimeout(() => {
+                suppressResizeSave = false;
+            }, 100);
         }
     );
 
@@ -344,12 +483,15 @@
         applyGeometry();
         titleInput.value = session.name || "";
         content.innerHTML = session.text || "";
+        cleanContentStyles(false);
+        convertExternalImages();
+        restoreScrollPosition(session.scrollTop || 0);
     }
 
     /* ======================================================
-       STORAGE SYNC
+       9. STORAGE SYNC & TAB VISIBILITY
     ====================================================== */
-    chrome.storage.onChanged.addListener(function(changes, area) {
+    chrome.storage.onChanged.addListener((changes, area) => {
         if (area !== "local") return;
 
         if (changes.currentSession && changes.currentSession.newValue) {
@@ -357,11 +499,17 @@
             currentSession = { ...newSession };
 
             if (!isHomeOpen && !isDragging) {
-                if (document.activeElement !== titleInput) {
+                const activeEl = shadow.activeElement || document.activeElement;
+                if (activeEl !== titleInput) {
                     titleInput.value = newSession.name || "";
                 }
-                if (document.activeElement !== content) {
+                if (activeEl !== content) {
                     content.innerHTML = newSession.text || "";
+                    cleanContentStyles(false);
+                    convertExternalImages();
+                }
+                if (typeof newSession.scrollTop === "number" && !isRestoringScroll) {
+                    restoreScrollPosition(newSession.scrollTop);
                 }
             }
             if (isHomeOpen) renderSessions();
@@ -375,8 +523,12 @@
         }
 
         if (changes.stickyGeometry && !isHomeOpen && !isDragging) {
+            suppressResizeSave = true;
             stickyGeometry = { ...createDefaultGeometry(), ...changes.stickyGeometry.newValue };
             applyGeometry();
+            setTimeout(() => {
+                suppressResizeSave = false;
+            }, 100);
         }
 
         if (changes.isOpen) {
@@ -385,6 +537,9 @@
                 box.classList.remove("fade-in");
                 void box.offsetWidth;
                 box.classList.add("fade-in");
+                if (currentSession) {
+                    restoreScrollPosition(currentSession.scrollTop || 0);
+                }
             } else {
                 box.style.display = "none";
                 closeMenu();
@@ -398,6 +553,17 @@
         }
     });
 
+    document.addEventListener("visibilitychange", () => {
+        if (!document.hidden && currentSession && !isHomeOpen) {
+            chrome.storage.local.get(["currentSession"], (data) => {
+                if (data.currentSession && typeof data.currentSession.scrollTop === "number") {
+                    currentSession.scrollTop = data.currentSession.scrollTop;
+                    restoreScrollPosition(data.currentSession.scrollTop);
+                }
+            });
+        }
+    });
+
     function applyGeometry() {
         if (!stickyGeometry) return;
         box.style.left = Math.max(0, Number(stickyGeometry.x) || 100) + "px";
@@ -407,7 +573,7 @@
     }
 
     /* ======================================================
-       IMAGE RESIZING LOGIC
+       10. IMAGE RESIZING OVERLAY & CONTROLS
     ====================================================== */
     function updateResizerPosition() {
         if (!selectedImg || !box.contains(selectedImg)) {
@@ -430,7 +596,6 @@
         imageResizer.classList.remove("show");
     }
 
-    // Click on image to activate resizer
     content.addEventListener("click", (e) => {
         if (e.target.tagName === "IMG") {
             e.stopPropagation();
@@ -441,19 +606,26 @@
         }
     });
 
-    // Reposition when content scrolls
     content.addEventListener("scroll", () => {
         if (selectedImg) updateResizerPosition();
-    });
+        if (isHomeOpen || !currentSession || isRestoringScroll) return;
 
-    // Dismiss resizer when clicking outside
+        currentSession.scrollTop = Math.round(content.scrollTop);
+        clearTimeout(scrollSaveTimer);
+        scrollSaveTimer = setTimeout(() => {
+            if (currentSession && !isHomeOpen && !isRestoringScroll) {
+                chrome.storage.local.set({ currentSession });
+            }
+        }, 120);
+    }, { passive: true });
+
     document.addEventListener("pointerdown", (e) => {
-        if (!imageResizer.contains(e.target) && e.target !== selectedImg) {
+        const path = e.composedPath ? e.composedPath() : [e.target];
+        if (!path.includes(imageResizer) && !path.includes(selectedImg)) {
             hideResizer();
         }
     });
 
-    // Preset button clicks (33%, 66%, 100%, delete)
     imageResizer.querySelectorAll(".img-size-btn").forEach(btn => {
         btn.addEventListener("click", (e) => {
             e.preventDefault();
@@ -477,7 +649,6 @@
         });
     });
 
-    // Drag-to-resize handle
     resizeHandle.addEventListener("pointerdown", (e) => {
         e.preventDefault();
         e.stopPropagation();
@@ -486,16 +657,22 @@
         const startX = e.clientX;
         const startWidth = selectedImg.offsetWidth;
         const containerWidth = content.clientWidth;
+        let resizeRaf = null;
 
         const onPointerMove = (moveEvent) => {
-            const deltaX = moveEvent.clientX - startX;
-            const newWidth = Math.max(50, Math.min(startWidth + deltaX, containerWidth));
-            selectedImg.style.width = newWidth + "px";
-            selectedImg.style.height = "auto";
-            updateResizerPosition();
+            if (resizeRaf) return;
+            resizeRaf = requestAnimationFrame(() => {
+                const deltaX = moveEvent.clientX - startX;
+                const newWidth = Math.max(50, Math.min(startWidth + deltaX, containerWidth));
+                selectedImg.style.width = newWidth + "px";
+                selectedImg.style.height = "auto";
+                updateResizerPosition();
+                resizeRaf = null;
+            });
         };
 
         const onPointerUp = () => {
+            if (resizeRaf) cancelAnimationFrame(resizeRaf);
             document.removeEventListener("pointermove", onPointerMove);
             document.removeEventListener("pointerup", onPointerUp);
             currentSession.text = content.innerHTML;
@@ -507,9 +684,9 @@
     });
 
     /* ======================================================
-       DRAGGING THE STICKY NOTE
+       11. DRAGGING (RAF-BATCHED)
     ====================================================== */
-    dragHandle.addEventListener("pointerdown", function(event) {
+    dragHandle.addEventListener("pointerdown", (event) => {
         if (isHomeOpen) return;
         hideResizer();
         isDragging = true;
@@ -522,39 +699,47 @@
 
         try {
             dragHandle.setPointerCapture(event.pointerId);
-        } catch (e) {}
+        } catch (_) {}
 
         event.preventDefault();
         event.stopPropagation();
     });
 
-    document.addEventListener("pointermove", function(event) {
+    document.addEventListener("pointermove", (event) => {
         if (!isDragging) return;
 
-        const width = box.offsetWidth;
-        const height = box.offsetHeight;
-        let newX = event.clientX - offsetX;
-        let newY = event.clientY - offsetY;
+        if (dragRafId) return;
+        dragRafId = requestAnimationFrame(() => {
+            const width = box.offsetWidth;
+            const height = box.offsetHeight;
+            let newX = event.clientX - offsetX;
+            let newY = event.clientY - offsetY;
 
-        const maxX = window.innerWidth - width;
-        const maxY = window.innerHeight - height;
+            const maxX = window.innerWidth - width;
+            const maxY = window.innerHeight - height;
 
-        newX = Math.max(0, Math.min(newX, maxX));
-        newY = Math.max(0, Math.min(newY, maxY));
+            newX = Math.max(0, Math.min(newX, maxX));
+            newY = Math.max(0, Math.min(newY, maxY));
 
-        box.style.left = newX + "px";
-        box.style.top = newY + "px";
+            box.style.left = newX + "px";
+            box.style.top = newY + "px";
+            dragRafId = null;
+        });
     });
 
     function endDrag() {
         if (!isDragging) return;
         isDragging = false;
+        if (dragRafId) {
+            cancelAnimationFrame(dragRafId);
+            dragRafId = null;
+        }
         box.classList.remove("dragging");
 
         if (activePointerId !== null) {
             try {
                 dragHandle.releasePointerCapture(activePointerId);
-            } catch (e) {}
+            } catch (_) {}
             activePointerId = null;
         }
 
@@ -565,9 +750,9 @@
     document.addEventListener("pointercancel", endDrag);
 
     /* ======================================================
-       RESIZE OBSERVER
+       12. RESIZE OBSERVER
     ====================================================== */
-    const resizeObserver = new ResizeObserver(function() {
+    const resizeObserver = new ResizeObserver(() => {
         if (suppressResizeSave || isHomeOpen || box.style.display === "none") return;
         if (selectedImg) updateResizerPosition();
         scheduleGeometrySave();
@@ -575,71 +760,67 @@
     resizeObserver.observe(box);
 
     /* ======================================================
-       INPUTS & SAVING
+       13. INPUTS & ASYNC PERSISTENCE
     ====================================================== */
-    titleInput.addEventListener("input", function() {
+    titleInput.addEventListener("input", () => {
         if (isHomeOpen || !currentSession) return;
-        currentSession.name = titleInput.value;
         scheduleSave();
     });
 
-    content.addEventListener("input", function() {
+    content.addEventListener("input", () => {
         if (isHomeOpen || !currentSession) return;
-        if (content.innerHTML === "<br>" || content.innerHTML.trim() === "<div><br></div>") {
-            content.innerHTML = "";
-        }
-        currentSession.text = content.innerHTML;
         scheduleSave();
     });
 
-    content.addEventListener("paste", function(event) {
+    content.addEventListener("paste", (event) => {
         const clipboard = event.clipboardData;
         if (!clipboard) return;
 
         const items = Array.from(clipboard.items || []);
         const imageItem = items.find(item => item.kind === "file" && item.type.startsWith("image/"));
-        if (!imageItem) return;
 
-        event.preventDefault();
-        const file = imageItem.getAsFile();
-        if (!file) return;
+        if (imageItem) {
+            event.preventDefault();
+            const file = imageItem.getAsFile();
+            if (!file) return;
 
-        const reader = new FileReader();
-        reader.onload = function(loadEvent) {
-            const image = document.createElement("img");
-            image.src = loadEvent.target.result;
-            image.alt = "Pasted image";
-            image.style.width = "100%";
+            const reader = new FileReader();
+            reader.onload = (loadEvent) => {
+                const image = document.createElement("img");
+                image.src = loadEvent.target.result;
+                image.alt = "Pasted image";
+                image.style.width = "100%";
 
-            const selection = window.getSelection();
-            if (!selection || selection.rangeCount === 0) {
-                content.appendChild(image);
-            } else {
-                const range = selection.getRangeAt(0);
-                if (!content.contains(range.commonAncestorContainer)) {
-                    content.appendChild(image);
-                } else {
-                    range.deleteContents();
-                    range.insertNode(image);
-                    range.setStartAfter(image);
-                    range.collapse(true);
-                    selection.removeAllRanges();
-                    selection.addRange(range);
+                insertNodeAtSelection(image);
+                if (currentSession) {
+                    currentSession.text = content.innerHTML;
+                    currentSession.scrollTop = Math.round(content.scrollTop);
+                    scheduleSave();
                 }
-            }
+            };
+            reader.readAsDataURL(file);
+            return;
+        }
 
+        setTimeout(() => {
+            cleanContentStyles(true);
+            convertExternalImages();
             if (currentSession) {
                 currentSession.text = content.innerHTML;
+                currentSession.scrollTop = Math.round(content.scrollTop);
                 scheduleSave();
             }
-        };
-        reader.readAsDataURL(file);
+        }, 50);
     });
 
     function updateSessionFromUI() {
         if (!currentSession) return;
         currentSession.name = titleInput.value;
+        if (content.innerHTML === "<br>" || content.innerHTML.trim() === "<div><br></div>") {
+            content.innerHTML = "";
+        }
         currentSession.text = content.innerHTML;
+        currentSession.scrollTop = Math.round(content.scrollTop);
     }
 
     function scheduleSave() {
@@ -651,13 +832,13 @@
     function saveSession() {
         if (isHomeOpen || !currentSession) return;
         updateSessionFromUI();
-        chrome.storage.local.set({ currentSession: { ...currentSession } });
+        chrome.storage.local.set({ currentSession });
     }
 
     window.addEventListener("beforeunload", () => {
         if (currentSession && !isHomeOpen) {
             updateSessionFromUI();
-            chrome.storage.local.set({ currentSession: { ...currentSession } });
+            chrome.storage.local.set({ currentSession });
         }
     });
 
@@ -680,13 +861,13 @@
     function saveGeometry() {
         if (isHomeOpen || suppressResizeSave) return;
         updateGeometryFromUI();
-        chrome.storage.local.set({ stickyGeometry: { ...stickyGeometry } });
+        chrome.storage.local.set({ stickyGeometry });
     }
 
     /* ======================================================
-       MENU & SETTINGS
+       14. MENU & SETTINGS VIEW
     ====================================================== */
-    menuButton.addEventListener("pointerdown", function(event) {
+    menuButton.addEventListener("pointerdown", (event) => {
         event.preventDefault();
         event.stopPropagation();
         hideResizer();
@@ -703,13 +884,14 @@
         menuButton.classList.remove("active");
     }
 
-    document.addEventListener("pointerdown", function(event) {
-        if (!menu.contains(event.target) && event.target !== menuButton) {
+    document.addEventListener("pointerdown", (event) => {
+        const path = event.composedPath ? event.composedPath() : [event.target];
+        if (!path.includes(menu) && !path.includes(menuButton)) {
             closeMenu();
         }
     });
 
-    settingsButton.addEventListener("click", function(event) {
+    settingsButton.addEventListener("click", (event) => {
         event.preventDefault();
         event.stopPropagation();
         openSettings();
@@ -723,7 +905,7 @@
             isHomeOpen = false;
             clearTimeout(closeHomeTimer);
             homeView.classList.remove("show");
-            box.classList.remove("home-open");
+            box.classList.remove("home-open", "home-animating");
             overlay.classList.remove("show");
             box.style.transform = "none";
             applyGeometry();
@@ -741,13 +923,13 @@
         applyGeometry();
     }
 
-    settingsClose.addEventListener("click", function(event) {
+    settingsClose.addEventListener("click", (event) => {
         event.preventDefault();
         event.stopPropagation();
         closeSettings();
     });
 
-    closeStickyButton.addEventListener("pointerdown", function(event) {
+    closeStickyButton.addEventListener("pointerdown", (event) => {
         event.preventDefault();
         event.stopPropagation();
         closeMenu();
@@ -756,7 +938,7 @@
     });
 
     /* ======================================================
-       NEW SESSION LOGIC
+       15. NEW SESSION LOGIC
     ====================================================== */
     function createNewSession() {
         hideResizer();
@@ -788,33 +970,35 @@
             currentSession: newSession,
             sessions: updatedSessions,
             isOpen: true
-        }, function() {
+        }, () => {
             titleInput.value = "";
             content.innerHTML = "";
             applyGeometry();
             closeMenu();
             closeHome();
             closeSettings();
-            suppressResizeSave = false;
+            setTimeout(() => {
+                suppressResizeSave = false;
+            }, 100);
         });
     }
 
-    newSessionButton.addEventListener("pointerdown", function(event) {
+    newSessionButton.addEventListener("pointerdown", (event) => {
         event.preventDefault();
         event.stopPropagation();
         createNewSession();
     });
 
-    homeNewSession.addEventListener("pointerdown", function(event) {
+    homeNewSession.addEventListener("pointerdown", (event) => {
         event.preventDefault();
         event.stopPropagation();
         createNewSession();
     });
 
     /* ======================================================
-       HOME / SESSIONS VIEW
+       16. HOME / SESSIONS VIEW (SYMMETRICAL 2-WAY TRANSITIONS)
     ====================================================== */
-    homeButton.addEventListener("pointerdown", function(event) {
+    homeButton.addEventListener("pointerdown", (event) => {
         event.preventDefault();
         event.stopPropagation();
         hideResizer();
@@ -822,13 +1006,13 @@
         else openHome();
     });
 
-    homeClose.addEventListener("pointerdown", function(event) {
+    homeClose.addEventListener("pointerdown", (event) => {
         event.preventDefault();
         event.stopPropagation();
         closeHome();
     });
 
-    overlay.addEventListener("pointerdown", function(event) {
+    overlay.addEventListener("pointerdown", (event) => {
         event.preventDefault();
         event.stopPropagation();
         closeHome();
@@ -843,36 +1027,45 @@
         updateSessionFromUI();
 
         if (currentSession) {
-            chrome.storage.local.set({ currentSession: { ...currentSession } });
+            chrome.storage.local.set({ currentSession });
         }
 
         const rect = box.getBoundingClientRect();
-        homeGeometry = { left: rect.left, top: rect.top, width: rect.width, height: rect.height };
+        homeGeometry = {
+            left: Math.round(rect.left),
+            top: Math.round(rect.top),
+            width: Math.round(rect.width),
+            height: Math.round(rect.height)
+        };
 
         isHomeOpen = true;
         suppressResizeSave = true;
         renderSessions();
 
-        box.style.left = rect.left + "px";
-        box.style.top = rect.top + "px";
-        box.style.width = rect.width + "px";
-        box.style.height = rect.height + "px";
+        box.style.left = homeGeometry.left + "px";
+        box.style.top = homeGeometry.top + "px";
+        box.style.width = homeGeometry.width + "px";
+        box.style.height = homeGeometry.height + "px";
         box.style.transform = "none";
 
         overlay.classList.add("show");
-        void box.offsetWidth;
-        box.classList.add("home-open");
         homeView.classList.add("show");
         noteView.classList.add("hide");
 
+        void box.offsetWidth;
+
+        box.classList.add("home-animating", "home-open");
+
         requestAnimationFrame(() => {
-            requestAnimationFrame(() => {
-                box.style.left = "50%";
-                box.style.top = "50%";
-                box.style.width = Math.min(900, Math.max(220, window.innerWidth - 80)) + "px";
-                box.style.height = Math.min(680, Math.max(180, window.innerHeight - 80)) + "px";
-                box.style.transform = "translate(-50%, -50%)";
-            });
+            box.style.left = "50%";
+            box.style.top = "50%";
+            box.style.width = Math.min(900, Math.max(220, window.innerWidth - 80)) + "px";
+            box.style.height = Math.min(680, Math.max(180, window.innerHeight - 80)) + "px";
+            box.style.transform = "translate(-50%, -50%)";
+
+            closeHomeTimer = setTimeout(() => {
+                box.classList.remove("home-animating");
+            }, 400);
         });
     }
 
@@ -880,48 +1073,43 @@
         if (!isHomeOpen) return;
         clearTimeout(closeHomeTimer);
         suppressResizeSave = true;
-
-        const rect = box.getBoundingClientRect();
-        box.style.left = rect.left + "px";
-        box.style.top = rect.top + "px";
-        box.style.width = rect.width + "px";
-        box.style.height = rect.height + "px";
-        box.style.transform = "none";
+        isHomeOpen = false;
 
         homeView.classList.remove("show");
         noteView.classList.remove("hide");
-        void box.offsetWidth;
-        box.classList.remove("home-open");
         overlay.classList.remove("show");
 
-        requestAnimationFrame(() => {
-            if (!homeGeometry) {
-                isHomeOpen = false;
-                suppressResizeSave = false;
-                applyGeometry();
-                return;
-            }
+        box.classList.add("home-animating");
+        box.classList.remove("home-open");
 
-            box.style.left = homeGeometry.left + "px";
-            box.style.top = homeGeometry.top + "px";
-            box.style.width = homeGeometry.width + "px";
-            box.style.height = homeGeometry.height + "px";
+        void box.offsetWidth;
+
+        requestAnimationFrame(() => {
+            const target = homeGeometry || stickyGeometry;
+            box.style.left = (target.left || target.x || 100) + "px";
+            box.style.top = (target.top || target.y || 100) + "px";
+            box.style.width = (target.width || 305) + "px";
+            box.style.height = (target.height || 310) + "px";
             box.style.transform = "none";
 
             closeHomeTimer = setTimeout(() => {
-                isHomeOpen = false;
+                box.classList.remove("home-animating");
                 suppressResizeSave = false;
                 applyGeometry();
+
                 if (currentSession) {
                     titleInput.value = currentSession.name || "";
                     content.innerHTML = currentSession.text || "";
+                    cleanContentStyles(false);
+                    convertExternalImages();
+                    restoreScrollPosition(currentSession.scrollTop || 0);
                 }
-            }, 300);
+            }, 400);
         });
     }
 
     /* ======================================================
-       RENDER SESSIONS
+       17. SESSIONS LIST RENDERING
     ====================================================== */
     function renderSessions() {
         sessionList.innerHTML = "";
@@ -930,9 +1118,12 @@
         }
 
         const sorted = [...sessions].sort((a, b) => (b.starred ? 1 : 0) - (a.starred ? 1 : 0));
-        sorted.forEach(s => sessionList.appendChild(createSessionCard(s, false)));
+        const len = sorted.length;
+        for (let i = 0; i < len; i++) {
+            sessionList.appendChild(createSessionCard(sorted[i], false));
+        }
 
-        if (!currentSession && sessions.length === 0) {
+        if (!currentSession && len === 0) {
             const empty = document.createElement("div");
             empty.className = "sessions-empty";
             empty.textContent = "No sessions";
@@ -985,16 +1176,13 @@
             currentLabel.textContent = "CURRENT";
             card.appendChild(currentLabel);
 
-            const selectCurrent = (e) => {
+            card.addEventListener("click", (e) => {
                 e.preventDefault();
                 e.stopPropagation();
                 titleInput.value = currentSession.name || "";
                 content.innerHTML = currentSession.text || "";
                 closeHome();
-            };
-
-            card.addEventListener("click", selectCurrent);
-            card.addEventListener("pointerdown", selectCurrent);
+            });
         } else {
             card.addEventListener("click", (e) => {
                 if (e.target.closest(".session-delete") || e.target.closest(".session-star")) return;
@@ -1022,10 +1210,10 @@
     function getPreview(session) {
         const html = session.text || "";
         if (!html.trim()) return "Empty note";
-        const temp = document.createElement("div");
-        temp.innerHTML = html;
-        temp.querySelectorAll("img").forEach(img => img.replaceWith(document.createTextNode("<image>")));
-        const text = temp.textContent.replace(/\s+/g, " ").trim();
+        const preprocessed = html.replace(/<img[^>]*>/gi, " <image> ");
+        previewPool.innerHTML = preprocessed;
+        const text = (previewPool.textContent || "").replace(/\s+/g, " ").trim();
+        previewPool.textContent = "";
         return text ? (text.length > 90 ? text.substring(0, 90) + "..." : text) : "<image>";
     }
 
@@ -1046,24 +1234,29 @@
         suppressResizeSave = true;
 
         chrome.storage.local.set({
-            currentSession: currentSession,
+            currentSession,
             sessions: remaining,
             isOpen: true
-        }, function() {
+        }, () => {
             titleInput.value = currentSession.name || "";
             content.innerHTML = currentSession.text || "";
             applyGeometry();
             closeHome();
-            suppressResizeSave = false;
+            setTimeout(() => {
+                suppressResizeSave = false;
+            }, 100);
+            cleanContentStyles(false);
+            convertExternalImages();
+            restoreScrollPosition(currentSession.scrollTop || 0);
         });
     }
 
     /* ======================================================
-       THEMES
+       18. THEMES
     ====================================================== */
     const themeButtons = box.querySelectorAll(".theme-option");
     themeButtons.forEach(button => {
-        button.addEventListener("click", function(e) {
+        button.addEventListener("click", (e) => {
             e.preventDefault();
             const theme = button.dataset.theme;
             setTheme(theme);
@@ -1077,8 +1270,4 @@
         box.dataset.theme = theme;
         themeButtons.forEach(btn => btn.classList.toggle("selected", btn.dataset.theme === theme));
     }
-
-    chrome.runtime.onMessage.addListener((req, sender, sendResponse) => {
-        if (req.action === "PING") sendResponse({ status: "OK" });
-    });
 })();

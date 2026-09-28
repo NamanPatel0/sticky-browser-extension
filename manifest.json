@@ -5,9 +5,7 @@
     "description": "A persistent sticky note for the browser.",
     "permissions": [
         "storage",
-        "unlimitedStorage",
-        "activeTab",
-        "scripting"
+        "unlimitedStorage"
     ],
     "host_permissions": [
         "<all_urls>"
@@ -33,13 +31,12 @@
         {
             "matches": ["<all_urls>"],
             "js": ["content.js"],
-            "css": ["style.css"],
             "run_at": "document_end"
         }
     ],
     "web_accessible_resources": [
         {
-            "resources": ["home.html", "home.css", "home.js"],
+            "resources": ["style.css", "home.html", "home.css", "home.js"],
             "matches": ["<all_urls>"]
         }
     ]
